@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Savings & Growth Explorer — D3</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="topnav">
+    <h1>Savings & Growth Explorer</h1>
+    <p class="subtitle">Interactive stacked bars + linked scatter plot (GDP, savings, growth)</p>
+  </nav>
+
+  <section class="controls">
+    <div class="control">
+      <label for="yearRange">Year: <span id="yearLabel">2019</span></label>
+      <input id="yearRange" type="range" min="1990" max="2022" value="2019" />
+    </div>
+    <div class="control">
+      <label for="countryFilter">Filter countries:</label>
+      <input id="countryFilter" type="text" placeholder="e.g., United" />
+    </div>
+    <div class="control">
+      <label><input type="checkbox" id="pppToggle" /> Use PPP (2017 int $)</label>
+    </div>
+    <div class="control">
+      <button id="resetSelection">Reset selection</button>
+    </div>
+  </section>
+
+  <main class="grid">
+    <figure>
+      <figcaption>Stacked bars: Gross savings & Domestic savings (% of GDP)</figcaption>
+      <svg id="stacked"></svg>
+    </figure>
+    <figure>
+      <figcaption>Scatter: GDP per capita vs GDP growth (bubble size = population)</figcaption>
+      <svg id="scatter"></svg>
+    </figure>
+  </main>
+
+  <footer class="notes">
+    <p><strong>Tip:</strong> Hover to see values, brush bars to filter years, click bubbles to highlight countries.</p>
+  </footer>
+
+  <!-- D3 library -->
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <!-- Your main code -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>
