@@ -40,95 +40,101 @@ const data = raw.map(d => ({
 
 const years = d3.extent(data, d => d.year);
 const state = {
-  year: years[1] || 2019,
+  year: 2019,
+  filterText: "",
   usePPP: false,
-  brushedYears: null
+  brushedYears: null,
+  selected: new Set()
 };
 
 // ============= STACKED BAR CHART ==================
 
-let updateStacked = () => {};
-
 function buildStacked() {
-  const svg = d3.select("#stacked");
-  svg.selectAll("*").remove();
+    const svg = d3.select("#stacked");
+    svg.selectAll("*").remove();
+  
+    const W = svg.node().clientWidth,
+      H = svg.node().clientHeight;
+    const margin = { top: 30, right: 20, bottom: 40, left: 50 };
+    const innerW = W - margin.left - margin.right;
+    const innerH = H - margin.top - margin.bottom;
+    const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+  
+    const byYear = d3.rollups(
+      data,
+      v => ({
+        sDom: d3.mean(v, d => d.sDom),
+        sGross: d3.mean(v, d => d.sGross)
+      }),
+      d => d.year
+    ).sort((a, b) => a[0] - b[0]);
+  
 
-  const W = svg.node().clientWidth,
-    H = svg.node().clientHeight;
-  const margin = { top: 30, right: 20, bottom: 40, left: 50 };
-  const innerW = W - margin.left - margin.right;
-  const innerH = H - margin.top - margin.bottom;
-  const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
-
-  // Group by year
-  const byYear = d3.rollups(
-    data,
-    v => ({
-      sDom: d3.mean(v, d => d.sDom),
-      sGross: d3.mean(v, d => d.sGross)
-    }),
-    d => d.year
-  ).sort((a, b) => a[0] - b[0]);
+  const years = byYear.map(d => d[0]);
+  const seriesData = byYear.map(([y, v]) => ({ year: y, sDom: v.sDom ?? 0, sGross: v.sGross ?? 0 }));
 
   const stack = d3.stack().keys(["sDom", "sGross"]);
-  const color = d3.scaleOrdinal().domain(["sDom", "sGross"]).range(["#60a5fa", "#f59e0b"]);
+  const stacked = stack(seriesData);
 
-  const x = d3.scaleBand()
-    .domain(byYear.map(d => d[0]))
-    .range([0, innerW])
-    .padding(0.1);
-
-  const y = d3.scaleLinear()
-    .domain([0, d3.max(byYear, ([, v]) => (v.sDom + v.sGross))])
+  const x = d3.scaleBand().domain(years).range([0, innerW]).padding(0.1);
+  const y = d3
+    .scaleLinear()
+    .domain([0, d3.max(stacked, s => d3.max(s, d => d[1]))])
     .nice()
     .range([innerH, 0]);
 
-  const xAxis = g.append("g")
+  const color = d3.scaleOrdinal().domain(["sDom", "sGross"]).range(["#60a5fa", "#f59e0b"]);
+
+  g.append("g")
     .attr("transform", `translate(0,${innerH})`)
     .call(d3.axisBottom(x).tickValues(x.domain().filter((d, i) => !(i % 5))))
     .attr("color", "#ccc");
 
-  const yAxis = g.append("g")
-    .call(d3.axisLeft(y).tickFormat(d => d + "%"))
-    .attr("color", "#ccc");
+  g.append("g").call(d3.axisLeft(y).ticks(6).tickFormat(d => d + "%")).attr("color", "#ccc");
 
-  // Prepare stacked data
-  const yearData = byYear.map(([year, vals]) => ({ year, ...vals }));
-  const stackedData = stack(yearData);
-
-  const layer = g.selectAll(".layer")
-    .data(stackedData)
+  const layer = g
+    .selectAll(".layer")
+    .data(stacked)
     .join("g")
     .attr("fill", d => color(d.key));
 
-  layer.selectAll("rect")
+  const tooltip = makeTooltip();
+
+  layer
+    .selectAll("rect")
     .data(d => d.map(v => ({ key: d.key, data: v.data, y0: v[0], y1: v[1] })))
     .join("rect")
     .attr("x", d => x(d.data.year))
     .attr("y", d => y(d.y1))
+    .attr("width", x.bandwidth())
     .attr("height", d => y(d.y0) - y(d.y1))
-    .attr("width", x.bandwidth());
+    .on("mousemove", (ev, d) => {
+      tooltip.show(ev, `${d.data.year}<br>${d.key}: ${d3.format(".1f")(d.data[d.key])}%`);
+    })
+    .on("mouseleave", () => tooltip.hide());
 
-  // Highlight year dynamically
-  updateStacked = (year) => {
-    const focus = byYear.find(([y]) => y === year);
-    if (!focus) return;
-    const dom = focus[1].sDom || 0, gross = focus[1].sGross || 0;
-    const total = dom + gross;
-    y.domain([0, Math.max(40, total)]);
-    yAxis.transition().duration(400).call(d3.axisLeft(y).tickFormat(d => d + "%"));
-
-    const highlight = g.selectAll(".highlightRect").data([focus]);
-    highlight.join("rect")
-      .attr("class", "highlightRect")
-      .attr("x", x(year))
-      .attr("width", x.bandwidth())
-      .attr("y", y(total))
-      .attr("height", y(0) - y(total))
-      .attr("fill", "none")
-      .attr("stroke", "white")
-      .attr("stroke-width", 2);
-  };
+  const brush = d3
+    .brushX()
+    .extent([[0, 0], [innerW, innerH]])
+    .on("end", ({ selection }) => {
+      if (!selection) {
+        state.brushedYears = null;
+        return;
+      }
+      const [x0, x1] = selection;
+      const selYears = x.domain().filter(y => {
+        const c = x(y) + x.bandwidth() / 2;
+        return c >= x0 && c <= x1;
+      });
+      if (selYears.length) {
+        state.brushedYears = [d3.min(selYears), d3.max(selYears)];
+        state.year = Math.round(d3.mean(selYears));
+        d3.select("#yearRange").property("value", state.year);
+        d3.select("#yearLabel").text(state.year);
+        updateScatter();
+      }
+    });
+  g.append("g").attr("class", "brush").call(brush);
 }
 
 // ============= SCATTER PLOT ==================
@@ -148,9 +154,9 @@ function buildScatter() {
 
   const tooltip = makeTooltip();
 
-  const x = d3.scaleLog().range([0, innerW]); // log scale to spread dots
+  const x = d3.scaleLog().range([0, innerW]);
   const y = d3.scaleLinear().range([innerH, 0]);
-  const r = d3.scaleSqrt().range([3, 30]);
+  const r = d3.scaleSqrt().range([2, 20]);
   const c = d3.scaleSequential(d3.interpolateTurbo);
 
   const xAxis = g.append("g").attr("transform", `translate(0,${innerH})`).attr("color", "#ccc");
@@ -158,7 +164,8 @@ function buildScatter() {
 
   function render() {
     const yr = state.year;
-    const rows = data.filter(d => d.year === yr);
+    const [y0, y1] = state.brushedYears ?? [yr, yr];
+    const rows = data.filter(d => d.year >= y0 && d.year <= y1);
 
     const usePPP = state.usePPP;
     const xVal = d => (usePPP ? d.gdpPcPPP : d.gdpPc);
@@ -166,18 +173,17 @@ function buildScatter() {
     const rVal = d => d.pop;
     const colorVal = d => d.sGross;
 
-    const valid = rows.filter(d => isFinite(xVal(d)) && isFinite(yVal(d)) && xVal(d) > 100);
+    const valid = rows.filter(d => isFinite(xVal(d)) && isFinite(yVal(d)));
 
     if (!valid.length) return;
 
-    // Spread domain better
-    x.domain([1000, d3.max(valid, xVal)]);
-    y.domain(d3.extent(valid, yVal)).nice();
+    x.domain(d3.extent(valid, xVal));
+    y.domain(d3.extent(valid, yVal));
     r.domain(d3.extent(valid, rVal));
     c.domain(d3.extent(valid, colorVal));
 
-    xAxis.transition().duration(400).call(d3.axisBottom(x).ticks(6, "~s"));
-    yAxis.transition().duration(400).call(d3.axisLeft(y).ticks(6));
+    xAxis.call(d3.axisBottom(x).ticks(6, "~s"));
+    yAxis.call(d3.axisLeft(y).ticks(6));
 
     const dots = g.selectAll("circle").data(valid, d => d.code);
 
@@ -279,8 +285,7 @@ buildScatter();
 d3.select("#yearRange").on("input", e => {
   state.year = +e.target.value;
   d3.select("#yearLabel").text(state.year);
-  updateStacked(state.year); // update bars dynamically
-  updateScatter();           // update scatter dynamically
+  updateScatter();
 });
 
 d3.select("#pppToggle").on("change", e => {
