@@ -40,14 +40,14 @@ const data = raw.map(d => ({
 
 const years = d3.extent(data, d => d.year);
 const state = {
-  year: 2019,
-  filterText: "",
+  year: years[1] || 2019,
   usePPP: false,
-  brushedYears: null,
-  selected: new Set()
+  brushedYears: null
 };
 
 // ============= STACKED BAR CHART ==================
+
+let updateStacked = () => {};
 
 function buildStacked() {
   const svg = d3.select("#stacked");
@@ -60,6 +60,7 @@ function buildStacked() {
   const innerH = H - margin.top - margin.bottom;
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
+  // Group by year
   const byYear = d3.rollups(
     data,
     v => ({
@@ -69,71 +70,65 @@ function buildStacked() {
     d => d.year
   ).sort((a, b) => a[0] - b[0]);
 
-  const years = byYear.map(d => d[0]);
-  const seriesData = byYear.map(([y, v]) => ({ year: y, sDom: v.sDom ?? 0, sGross: v.sGross ?? 0 }));
-
   const stack = d3.stack().keys(["sDom", "sGross"]);
-  const stacked = stack(seriesData);
+  const color = d3.scaleOrdinal().domain(["sDom", "sGross"]).range(["#60a5fa", "#f59e0b"]);
 
-  const x = d3.scaleBand().domain(years).range([0, innerW]).padding(0.1);
-  const y = d3
-    .scaleLinear()
-    .domain([0, d3.max(stacked, s => d3.max(s, d => d[1]))])
+  const x = d3.scaleBand()
+    .domain(byYear.map(d => d[0]))
+    .range([0, innerW])
+    .padding(0.1);
+
+  const y = d3.scaleLinear()
+    .domain([0, d3.max(byYear, ([, v]) => (v.sDom + v.sGross))])
     .nice()
     .range([innerH, 0]);
 
-  const color = d3.scaleOrdinal().domain(["sDom", "sGross"]).range(["#60a5fa", "#f59e0b"]);
-
-  g.append("g")
+  const xAxis = g.append("g")
     .attr("transform", `translate(0,${innerH})`)
     .call(d3.axisBottom(x).tickValues(x.domain().filter((d, i) => !(i % 5))))
     .attr("color", "#ccc");
 
-  g.append("g").call(d3.axisLeft(y).ticks(6).tickFormat(d => d + "%")).attr("color", "#ccc");
+  const yAxis = g.append("g")
+    .call(d3.axisLeft(y).tickFormat(d => d + "%"))
+    .attr("color", "#ccc");
 
-  const layer = g
-    .selectAll(".layer")
-    .data(stacked)
+  // Prepare stacked data
+  const yearData = byYear.map(([year, vals]) => ({ year, ...vals }));
+  const stackedData = stack(yearData);
+
+  const layer = g.selectAll(".layer")
+    .data(stackedData)
     .join("g")
     .attr("fill", d => color(d.key));
 
-  const tooltip = makeTooltip();
-
-  layer
-    .selectAll("rect")
+  layer.selectAll("rect")
     .data(d => d.map(v => ({ key: d.key, data: v.data, y0: v[0], y1: v[1] })))
     .join("rect")
     .attr("x", d => x(d.data.year))
     .attr("y", d => y(d.y1))
-    .attr("width", x.bandwidth())
     .attr("height", d => y(d.y0) - y(d.y1))
-    .on("mousemove", (ev, d) => {
-      tooltip.show(ev, `${d.data.year}<br>${d.key}: ${d3.format(".1f")(d.data[d.key])}%`);
-    })
-    .on("mouseleave", () => tooltip.hide());
+    .attr("width", x.bandwidth());
 
-  const brush = d3
-    .brushX()
-    .extent([[0, 0], [innerW, innerH]])
-    .on("end", ({ selection }) => {
-      if (!selection) {
-        state.brushedYears = null;
-        return;
-      }
-      const [x0, x1] = selection;
-      const selYears = x.domain().filter(y => {
-        const c = x(y) + x.bandwidth() / 2;
-        return c >= x0 && c <= x1;
-      });
-      if (selYears.length) {
-        state.brushedYears = [d3.min(selYears), d3.max(selYears)];
-        state.year = Math.round(d3.mean(selYears));
-        d3.select("#yearRange").property("value", state.year);
-        d3.select("#yearLabel").text(state.year);
-        updateScatter();
-      }
-    });
-  g.append("g").attr("class", "brush").call(brush);
+  // Highlight year dynamically
+  updateStacked = (year) => {
+    const focus = byYear.find(([y]) => y === year);
+    if (!focus) return;
+    const dom = focus[1].sDom || 0, gross = focus[1].sGross || 0;
+    const total = dom + gross;
+    y.domain([0, Math.max(40, total)]);
+    yAxis.transition().duration(400).call(d3.axisLeft(y).tickFormat(d => d + "%"));
+
+    const highlight = g.selectAll(".highlightRect").data([focus]);
+    highlight.join("rect")
+      .attr("class", "highlightRect")
+      .attr("x", x(year))
+      .attr("width", x.bandwidth())
+      .attr("y", y(total))
+      .attr("height", y(0) - y(total))
+      .attr("fill", "none")
+      .attr("stroke", "white")
+      .attr("stroke-width", 2);
+  };
 }
 
 // ============= SCATTER PLOT ==================
@@ -153,9 +148,9 @@ function buildScatter() {
 
   const tooltip = makeTooltip();
 
-  const x = d3.scaleLog().range([0, innerW]);
+  const x = d3.scaleLog().range([0, innerW]); // log scale to spread dots
   const y = d3.scaleLinear().range([innerH, 0]);
-  const r = d3.scaleSqrt().range([2, 20]);
+  const r = d3.scaleSqrt().range([3, 30]);
   const c = d3.scaleSequential(d3.interpolateTurbo);
 
   const xAxis = g.append("g").attr("transform", `translate(0,${innerH})`).attr("color", "#ccc");
@@ -163,8 +158,7 @@ function buildScatter() {
 
   function render() {
     const yr = state.year;
-    const [y0, y1] = state.brushedYears ?? [yr, yr];
-    const rows = data.filter(d => d.year >= y0 && d.year <= y1);
+    const rows = data.filter(d => d.year === yr);
 
     const usePPP = state.usePPP;
     const xVal = d => (usePPP ? d.gdpPcPPP : d.gdpPc);
@@ -172,17 +166,18 @@ function buildScatter() {
     const rVal = d => d.pop;
     const colorVal = d => d.sGross;
 
-    const valid = rows.filter(d => isFinite(xVal(d)) && isFinite(yVal(d)));
+    const valid = rows.filter(d => isFinite(xVal(d)) && isFinite(yVal(d)) && xVal(d) > 100);
 
     if (!valid.length) return;
 
-    x.domain(d3.extent(valid, xVal));
-    y.domain(d3.extent(valid, yVal));
+    // Spread domain better
+    x.domain([1000, d3.max(valid, xVal)]);
+    y.domain(d3.extent(valid, yVal)).nice();
     r.domain(d3.extent(valid, rVal));
     c.domain(d3.extent(valid, colorVal));
 
-    xAxis.call(d3.axisBottom(x).ticks(6, "~s"));
-    yAxis.call(d3.axisLeft(y).ticks(6));
+    xAxis.transition().duration(400).call(d3.axisBottom(x).ticks(6, "~s"));
+    yAxis.transition().duration(400).call(d3.axisLeft(y).ticks(6));
 
     const dots = g.selectAll("circle").data(valid, d => d.code);
 
@@ -284,7 +279,8 @@ buildScatter();
 d3.select("#yearRange").on("input", e => {
   state.year = +e.target.value;
   d3.select("#yearLabel").text(state.year);
-  updateScatter();
+  updateStacked(state.year); // update bars dynamically
+  updateScatter();           // update scatter dynamically
 });
 
 d3.select("#pppToggle").on("change", e => {
