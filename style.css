@@ -1,20 +1,8 @@
-/* === GENERAL LAYOUT === */
 body {
     margin: 0;
     font-family: system-ui, sans-serif;
     background: #0d0d0d;
     color: #e5e5e5;
-  }
-  
-  h1 {
-    margin: 0;
-    font-size: 1.8rem;
-  }
-  
-  .subtitle {
-    margin-top: 0.2em;
-    color: #aaa;
-    font-size: 0.9rem;
   }
   
   nav.topnav {
@@ -33,43 +21,6 @@ body {
     background: #111;
   }
   
-  .control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  
-  input[type="text"],
-  input[type="range"],
-  button {
-    font-size: 0.9rem;
-    padding: 0.3rem 0.5rem;
-    border-radius: 5px;
-    border: none;
-  }
-  
-  input[type="text"] {
-    background: #1c1c1c;
-    color: #e5e5e5;
-    border: 1px solid #333;
-  }
-  
-  input[type="range"] {
-    width: 180px;
-    accent-color: #60a5fa;
-  }
-  
-  button {
-    cursor: pointer;
-    background: #333;
-    color: #e5e5e5;
-    border: 1px solid #444;
-  }
-  button:hover {
-    background: #555;
-  }
-  
-  /* === MAIN GRID === */
   main.grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -77,17 +28,6 @@ body {
     padding: 1rem 2rem;
   }
   
-  figure {
-    margin: 0;
-  }
-  
-  figcaption {
-    color: #aaa;
-    font-size: 0.85rem;
-    margin-bottom: 0.5rem;
-  }
-  
-  /* === SVG CONTAINERS === */
   svg {
     width: 100%;
     height: 480px;
@@ -96,16 +36,6 @@ body {
     border-radius: 8px;
   }
   
-  /* === FOOTER === */
-  footer.notes {
-    text-align: center;
-    color: #777;
-    font-size: 0.85rem;
-    padding: 1rem;
-    border-top: 1px solid #333;
-  }
-  
-  /* === TOOLTIP === */
   .tooltip {
     position: fixed;
     pointer-events: none;
@@ -119,7 +49,6 @@ body {
     z-index: 10;
   }
   
-  /* === ANNOTATION BOX (bottom right) === */
   .annotations {
     position: fixed;
     right: 20px;
@@ -148,13 +77,3 @@ body {
   .annotations button:hover {
     background: #666;
   }
-  
-  /* === AXIS TEXT === */
-  .axis text {
-    fill: #ccc;
-  }
-  .axis line,
-  .axis path {
-    stroke: #444;
-  }
-  
