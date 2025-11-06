@@ -4,7 +4,6 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 
 const file = "economy-and-growth.csv";
 
-// 👇 Make sure these match your CSV column headers exactly!
 const cols = {
   name: "Country Name",
   code: "Country Code",
@@ -19,10 +18,8 @@ const cols = {
 
 // Load data
 const raw = await d3.csv(file, d3.autoType);
-console.log("Loaded data rows:", raw.length);
-console.log("Sample row:", raw[0]);
+console.log("Loaded:", raw.length, "rows");
 
-// Convert types
 const data = raw.map(d => ({
   name: d[cols.name],
   code: d[cols.code],
@@ -39,11 +36,7 @@ const data = raw.map(d => ({
 }));
 
 const years = d3.extent(data, d => d.year);
-const state = {
-  year: years[1] || 2019,
-  usePPP: false,
-  brushedYears: null
-};
+const state = { year: years[1] || 2019, usePPP: false };
 
 // ============= STACKED BAR CHART ==================
 
@@ -55,7 +48,7 @@ function buildStacked() {
 
   const W = svg.node().clientWidth,
     H = svg.node().clientHeight;
-  const margin = { top: 30, right: 20, bottom: 40, left: 50 };
+  const margin = { top: 30, right: 20, bottom: 50, left: 60 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
@@ -71,7 +64,9 @@ function buildStacked() {
   ).sort((a, b) => a[0] - b[0]);
 
   const stack = d3.stack().keys(["sDom", "sGross"]);
-  const color = d3.scaleOrdinal().domain(["sDom", "sGross"]).range(["#60a5fa", "#f59e0b"]);
+  const color = d3.scaleOrdinal()
+    .domain(["sDom", "sGross"])
+    .range(["#60a5fa", "#f59e0b"]);
 
   const x = d3.scaleBand()
     .domain(byYear.map(d => d[0]))
@@ -86,13 +81,12 @@ function buildStacked() {
   const xAxis = g.append("g")
     .attr("transform", `translate(0,${innerH})`)
     .call(d3.axisBottom(x).tickValues(x.domain().filter((d, i) => !(i % 5))))
-    .attr("color", "#ccc");
+    .attr("color", "#bbb");
 
   const yAxis = g.append("g")
     .call(d3.axisLeft(y).tickFormat(d => d + "%"))
-    .attr("color", "#ccc");
+    .attr("color", "#bbb");
 
-  // Prepare stacked data
   const yearData = byYear.map(([year, vals]) => ({ year, ...vals }));
   const stackedData = stack(yearData);
 
@@ -107,24 +101,19 @@ function buildStacked() {
     .attr("x", d => x(d.data.year))
     .attr("y", d => y(d.y1))
     .attr("height", d => y(d.y0) - y(d.y1))
-    .attr("width", x.bandwidth());
+    .attr("width", x.bandwidth())
+    .append("title")
+    .text(d => `${d.data.year}: ${d.key === "sDom" ? "Domestic" : "Gross"} = ${(d.y1 - d.y0).toFixed(1)}%`);
 
-  // Highlight year dynamically
+  // Highlight current year
   updateStacked = (year) => {
-    const focus = byYear.find(([y]) => y === year);
-    if (!focus) return;
-    const dom = focus[1].sDom || 0, gross = focus[1].sGross || 0;
-    const total = dom + gross;
-    y.domain([0, Math.max(40, total)]);
-    yAxis.transition().duration(400).call(d3.axisLeft(y).tickFormat(d => d + "%"));
-
-    const highlight = g.selectAll(".highlightRect").data([focus]);
+    const highlight = g.selectAll(".highlightRect").data([year]);
     highlight.join("rect")
       .attr("class", "highlightRect")
       .attr("x", x(year))
       .attr("width", x.bandwidth())
-      .attr("y", y(total))
-      .attr("height", y(0) - y(total))
+      .attr("y", 0)
+      .attr("height", innerH)
       .attr("fill", "none")
       .attr("stroke", "white")
       .attr("stroke-width", 2);
@@ -141,20 +130,20 @@ function buildScatter() {
 
   const W = svg.node().clientWidth,
     H = svg.node().clientHeight;
-  const margin = { top: 40, right: 20, bottom: 50, left: 60 };
+  const margin = { top: 40, right: 20, bottom: 60, left: 70 };
   const innerW = W - margin.left - margin.right;
   const innerH = H - margin.top - margin.bottom;
   const g = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
 
   const tooltip = makeTooltip();
 
-  const x = d3.scaleLog().range([0, innerW]); // log scale to spread dots
+  const x = d3.scaleLog().range([0, innerW]);
   const y = d3.scaleLinear().range([innerH, 0]);
-  const r = d3.scaleSqrt().range([3, 30]);
+  const r = d3.scaleSqrt().range([3, 25]);
   const c = d3.scaleSequential(d3.interpolateTurbo);
 
-  const xAxis = g.append("g").attr("transform", `translate(0,${innerH})`).attr("color", "#ccc");
-  const yAxis = g.append("g").attr("color", "#ccc");
+  const xAxis = g.append("g").attr("transform", `translate(0,${innerH})`).attr("color", "#bbb");
+  const yAxis = g.append("g").attr("color", "#bbb");
 
   function render() {
     const yr = state.year;
@@ -170,8 +159,8 @@ function buildScatter() {
 
     if (!valid.length) return;
 
-    // Spread domain better
-    x.domain([1000, d3.max(valid, xVal)]);
+    // Spread scatter points better
+    x.domain([1000, d3.max(valid, xVal)]).nice();
     y.domain(d3.extent(valid, yVal)).nice();
     r.domain(d3.extent(valid, rVal));
     c.domain(d3.extent(valid, colorVal));
@@ -188,10 +177,10 @@ function buildScatter() {
         .attr("cy", d => y(yVal(d)))
         .attr("r", d => r(rVal(d)))
         .attr("fill", d => c(colorVal(d)))
-        .attr("fill-opacity", 0.85)
+        .attr("fill-opacity", 0.8)
         .on("mousemove", (ev, d) => {
           tooltip.show(ev, `<b>${d.name}</b> (${d.year})<br>
-          GDPpc: ${d3.format(",")(xVal(d))}<br>
+          GDP per capita: ${d3.format(",")(xVal(d))}<br>
           Growth: ${d3.format(".1f")(d.growth)}%<br>
           Gross savings: ${d3.format(".1f")(d.sGross)}%`);
         })
@@ -209,8 +198,7 @@ function buildScatter() {
   updateScatter = render;
   render();
 
-  // Add color legend
-  addColorBins();
+  addColorLegend(svg);
 }
 
 // ============= TOOLTIP & LEGEND ==================
@@ -232,8 +220,7 @@ function makeTooltip() {
   };
 }
 
-function addColorBins() {
-  const svg = d3.select("#scatter");
+function addColorLegend(svg) {
   const colorScale = d3.scaleSequential(d3.interpolateTurbo).domain([5, 40]);
   const grad = svg.append("defs").append("linearGradient").attr("id", "colorGrad");
   d3.range(0, 1.01, 0.1).forEach(t => {
@@ -242,34 +229,13 @@ function addColorBins() {
       .attr("stop-color", colorScale(5 + t * (40 - 5)));
   });
   svg.append("rect")
-    .attr("x", 60).attr("y", 30)
+    .attr("x", 80).attr("y", 25)
     .attr("width", 180).attr("height", 10)
-    .style("fill", "url(#colorGrad)").attr("stroke", "#333");
-  svg.append("text").attr("x", 60).attr("y", 24).attr("fill", "#cbd5e1").text("Gross savings (% of GDP)");
-  svg.append("text").attr("x", 60).attr("y", 60).attr("fill", "#cbd5e1").text("Low");
-  svg.append("text").attr("x", 220).attr("y", 60).attr("fill", "#cbd5e1").text("High");
+    .style("fill", "url(#colorGrad)");
+  svg.append("text").attr("x", 80).attr("y", 20).attr("fill", "#ccc").text("Gross savings (% of GDP)");
+  svg.append("text").attr("x", 80).attr("y", 50).attr("fill", "#ccc").text("Low");
+  svg.append("text").attr("x", 240).attr("y", 50).attr("fill", "#ccc").text("High");
 }
-
-// ============= ANNOTATION PANEL + EXPORT =============
-
-const ann = d3.select("body")
-  .append("div")
-  .attr("class", "annotations")
-  .html(
-    "<b>Annotations</b><br>• Click bubbles to highlight<br>• Brush bars to filter<br>• Hover for details<br><br><button id='exportPNG'>Export PNG</button>"
-  );
-
-d3.select("#exportPNG").on("click", () => {
-  const node = document.querySelector("main");
-  import("https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/+esm").then(mod => {
-    mod.toPng(node).then(dataUrl => {
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "savings_growth.png";
-      a.click();
-    });
-  });
-});
 
 // ============= INITIALIZE EVERYTHING =============
 
@@ -279,8 +245,8 @@ buildScatter();
 d3.select("#yearRange").on("input", e => {
   state.year = +e.target.value;
   d3.select("#yearLabel").text(state.year);
-  updateStacked(state.year); // update bars dynamically
-  updateScatter();           // update scatter dynamically
+  updateStacked(state.year);
+  updateScatter();
 });
 
 d3.select("#pppToggle").on("change", e => {
