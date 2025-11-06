@@ -3,7 +3,8 @@ import * as d3 from "https://cdn.jsdelivr.net/npm/d3@7.9.0/+esm";
 
 // 1. Load data
 const data = await d3.csv("economy-and-growth.csv", d3.autoType);
-
+console.log("Loaded data rows:", data.length);
+console.log("Sample row:", data[0]);
 // (Insert your chart logic from the version I gave earlier — buildStacked(), buildScatter(), etc.)
 
 // --- Annotation panel ---
