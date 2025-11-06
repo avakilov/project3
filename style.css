@@ -1,159 +1,37 @@
-/* === GENERAL LAYOUT === */
 body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  background: #0d0d0d;
-  color: #e5e5e5;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.8rem;
-}
-
-.subtitle {
-  margin-top: 0.2em;
-  color: #aaa;
-  font-size: 0.9rem;
-}
-
-nav.topnav {
-  border-bottom: 1px solid #333;
-  padding: 1rem 2rem;
-  background: #0d0d0d;
-}
-
-section.controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.8rem 2rem;
-  border-bottom: 1px solid #333;
-  background: #111;
-}
-
-.control {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-input[type="text"],
-input[type="range"],
-button {
-  font-size: 0.9rem;
-  padding: 0.3rem 0.5rem;
-  border-radius: 5px;
-  border: none;
-}
-
-input[type="text"] {
-  background: #1c1c1c;
-  color: #e5e5e5;
-  border: 1px solid #333;
-}
-
-input[type="range"] {
-  width: 180px;
-  accent-color: #60a5fa;
-}
-
-button {
-  cursor: pointer;
-  background: #333;
-  color: #e5e5e5;
-  border: 1px solid #444;
-}
-button:hover {
-  background: #555;
-}
-
-/* === MAIN GRID === */
-main.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.8rem;
-  padding: 1rem 2rem;
-}
-
-figure {
-  margin: 0;
-}
-
-figcaption {
-  color: #aaa;
-  font-size: 0.85rem;
-  margin-bottom: 0.5rem;
-}
-
-/* === SVG CONTAINERS === */
-svg {
-  width: 100%;
-  height: 480px;
-  background: #151515;
-  border: 1px solid #222;
-  border-radius: 8px;
-}
-
-/* === FOOTER === */
-footer.notes {
-  text-align: center;
-  color: #777;
-  font-size: 0.85rem;
-  padding: 1rem;
-  border-top: 1px solid #333;
-}
-
-/* === TOOLTIP === */
-.tooltip {
-  position: fixed;
-  pointer-events: none;
-  background: rgba(30, 30, 30, 0.95);
-  color: #fff;
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-size: 0.85rem;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
-  transition: opacity 0.1s;
-  z-index: 10;
-}
-
-/* === ANNOTATION BOX (bottom right) === */
-.annotations {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  background: rgba(20, 20, 20, 0.95);
-  color: #ddd;
-  padding: 0.8rem 1rem;
-  border: 1px solid #333;
-  border-radius: 8px;
-  font-size: 0.85rem;
-  line-height: 1.3;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.6);
-  max-width: 220px;
-}
-
-.annotations button {
-  display: block;
-  margin-top: 0.6rem;
-  width: 100%;
-  padding: 0.3rem;
-  background: #444;
-  color: #fff;
-  border: none;
-  border-radius: 4px;
-}
-.annotations button:hover {
-  background: #666;
-}
-
-/* === AXIS TEXT === */
-.axis text {
-  fill: #ccc;
-}
-.axis line,
-.axis path {
-  stroke: #444;
-}
+    font-family: "Helvetica Neue", sans-serif;
+    background: #ffffff;
+    color: #222;
+    margin: 40px;
+  }
+  
+  svg text {
+    font-size: 12px;
+    font-family: "Helvetica Neue", sans-serif;
+  }
+  
+  .grid line {
+    stroke: #999;
+    stroke-opacity: 0.1;
+  }
+  
+  .axis text {
+    fill: #333;
+  }
+  
+  .chart-title {
+    font-size: 20px;
+    font-weight: bold;
+    fill: #111;
+  }
+  
+  .chart-subtitle {
+    font-size: 13px;
+    fill: #666;
+  }
+  
+  .legend text {
+    font-size: 12px;
+    fill: #333;
+  }
+  
